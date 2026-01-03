@@ -83,7 +83,6 @@ export class BackEndStack extends cdk.Stack {
           'Content-Type',
           'X-Amz-Date',
           'Authorization',
-          'X-Api-Key',
           'x-api-key',
           'X-Amz-Security-Token',
         ],
