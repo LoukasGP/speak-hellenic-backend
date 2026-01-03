@@ -136,12 +136,9 @@ export class BackEndStack extends cdk.Stack {
 #set($createdAt = $input.path('$.createdAt'))
 #set($lastLoginAt = $input.path('$.lastLoginAt'))
 #if(!$userId || $userId == '' || !$email || $email == '')
-  #set($context.responseOverride.status = 400)
-  {
-    "TableName": "${usersTable.tableName}",
-    "Item": {}
-  }
-#else
+#set($context.requestOverride.header.X-Amz-Target = "")
+#set($context.requestOverride.path = "/error")
+#end
 {
   "TableName": "${usersTable.tableName}",
   "Item": {
@@ -153,23 +150,26 @@ export class BackEndStack extends cdk.Stack {
     "lastLoginAt": { "S": "$util.escapeJavaScript($lastLoginAt)" }#end
   },
   "ConditionExpression": "attribute_not_exists(userId)",
-  "ReturnValues": "ALL_OLD"
-}
-#end`,
+  "ReturnValues": "NONE"
+}`,
         },
         integrationResponses: [
           {
             statusCode: '200',
             responseTemplates: {
-              'application/json': `#set($body = $util.parseJson($input.body))
-{
-  "userId": "$util.escapeJavaScript($body.userId)",
-  "email": "$util.escapeJavaScript($body.email)"#if($body.name && $body.name != ''),
-  "name": "$util.escapeJavaScript($body.name)"#end#if($body.picture && $body.picture != ''),
-  "picture": "$util.escapeJavaScript($body.picture)"#end#if($body.createdAt && $body.createdAt != ''),
-  "createdAt": "$util.escapeJavaScript($body.createdAt)"#end#if($body.lastLoginAt && $body.lastLoginAt != ''),
-  "lastLoginAt": "$util.escapeJavaScript($body.lastLoginAt)"#end
-}`,
+              'application/json': `$input.body`,
+            },
+            responseParameters: {
+              'method.response.header.Access-Control-Allow-Origin':
+                "'method.request.header.Origin'",
+            },
+          },
+          {
+            statusCode: '400',
+            selectionPattern: '.*/error.*',
+            responseTemplates: {
+              'application/json':
+                '{ "error": "ValidationError", "message": "Missing required fields: userId and email are required" }',
             },
             responseParameters: {
               'method.response.header.Access-Control-Allow-Origin':
