@@ -99,11 +99,11 @@ export class BackEndStack extends cdk.Stack {
       name: 'Standard Usage Plan',
       description: 'Usage plan for user API access',
       throttle: {
-        rateLimit: 100,
-        burstLimit: 200,
+        rateLimit: 1000,
+        burstLimit: 2000,
       },
       quota: {
-        limit: 10000,
+        limit: 1000000,
         period: apigateway.Period.MONTH,
       },
     });
