@@ -156,14 +156,8 @@ export class BackEndStack extends cdk.Stack {
           {
             statusCode: '200',
             responseTemplates: {
-              'application/json': `#set($inputRoot = $input.path('$'))
-{
-  "userId": "$input.path('$.userId')",
-  "email": "$input.path('$.email')",
-  "name": "$input.path('$.name')",
-  "picture": "$input.path('$.picture')",
-  "createdAt": "$input.path('$.createdAt')",
-  "lastLoginAt": "$input.path('$.lastLoginAt')"
+              'application/json': `{
+  "status": "success"
 }`,
             },
             responseParameters: {
