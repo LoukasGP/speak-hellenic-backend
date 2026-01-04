@@ -143,14 +143,22 @@ export class UserLoginServiceStack extends cdk.Stack {
     "lastLoginAt": { "S": "$lastLoginAt" }
   },
   "ConditionExpression": "attribute_not_exists(userId)",
-  "ReturnValues": "NONE"
+  "ReturnValues": "ALL_NEW"
 }`,
         },
         integrationResponses: [
           {
             statusCode: '200',
             responseTemplates: {
-              'application/json': `$context.request.body`,
+              'application/json': `#set($attrs = $input.path('$.Attributes'))
+{
+  "userId": "$attrs.userId.S",
+  "email": "$attrs.email.S",
+  "name": "$attrs.name.S",
+  "picture": "$attrs.picture.S",
+  "createdAt": "$attrs.createdAt.S",
+  "lastLoginAt": "$attrs.lastLoginAt.S"
+}`,
             },
             responseParameters: {
               'method.response.header.Access-Control-Allow-Origin': "'*'",
