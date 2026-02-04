@@ -8,8 +8,8 @@ This project supports separate **dev** and **prod** environments with isolated s
 
 | Environment | Stack Suffix | DynamoDB Table | API Quota | Log Retention |
 |-------------|--------------|----------------|-----------|---------------|
-| **Dev**     | `-Dev`       | `speak-greek-now-users` (dev) | 10k/month | 7 days |
-| **Prod**    | `-Prod`      | `speak-greek-now-users` (prod) | 50k/month | 30 days |
+| **Dev**     | `-Dev`       | `speak-greek-now-users-dev` | 10k/month | 7 days |
+| **Prod**    | (none)       | `speak-greek-now-users` | 50k/month | 30 days |
 
 ### Stack Names
 
@@ -18,8 +18,8 @@ This project supports separate **dev** and **prod** environments with isolated s
 - `SpeakHellenic-UserLoginServiceStack-Dev`
 
 **Production:**
-- `SpeakHellenic-S3StorageStack-Prod`
-- `SpeakHellenic-UserLoginServiceStack-Prod`
+- `SpeakHellenic-S3StorageStack`
+- `SpeakHellenic-UserLoginServiceStack`
 
 ## Deployment Commands
 
