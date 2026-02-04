@@ -2,12 +2,17 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 
+export interface S3StorageStackProps extends cdk.StackProps {
+  environment: string;
+  envSuffix: string;
+}
+
 export class S3StorageStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: S3StorageStackProps) {
     super(scope, id, props);
 
     const bucket = new s3.Bucket(this, 'SpeakHellenicBucket', {
-      bucketName: `speak-greek-now-lessons-${this.account}`,
+      bucketName: `speak-greek-now-lessons${props.envSuffix}-${this.account}`,
       versioned: true,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       cors: [
@@ -29,7 +34,7 @@ export class S3StorageStack extends cdk.Stack {
 
     // Add resource tags for cost tracking
     cdk.Tags.of(bucket).add('Project', 'SpeakHellenic');
-    cdk.Tags.of(bucket).add('Environment', 'Production');
+    cdk.Tags.of(bucket).add('Environment', props.environment);
     cdk.Tags.of(bucket).add('Component', 'LessonStorage');
 
     new cdk.CfnOutput(this, 'BucketName', {

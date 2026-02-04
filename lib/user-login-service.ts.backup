@@ -6,19 +6,14 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 
-export interface UserLoginServiceStackProps extends cdk.StackProps {
-  environment: string;
-  envSuffix: string;
-}
-
 export class UserLoginServiceStack extends cdk.Stack {
   public readonly apiErrorAlarm: cloudwatch.Alarm;
-  constructor(scope: Construct, id: string, props: UserLoginServiceStackProps) {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     // DynamoDB Table for user data
     const usersTable = new dynamodb.Table(this, 'UsersTable', {
-      tableName: `speak-greek-now-users${props.envSuffix}`,
+      tableName: 'speak-greek-now-users',
       partitionKey: {
         name: 'userId',
         type: dynamodb.AttributeType.STRING,
@@ -31,12 +26,12 @@ export class UserLoginServiceStack extends cdk.Stack {
 
     // Add resource tags for cost tracking
     cdk.Tags.of(usersTable).add('Project', 'SpeakHellenic');
-    cdk.Tags.of(usersTable).add('Environment', props.environment);
+    cdk.Tags.of(usersTable).add('Environment', 'Production');
     cdk.Tags.of(usersTable).add('Component', 'UserAuthentication');
 
     // CloudWatch Log Group for API access logs (7-day retention for MVP)
     const accessLogGroup = new logs.LogGroup(this, 'UserApiAccessLogs', {
-      logGroupName: `/aws/apigateway/speak-greek-now-user-api${props.envSuffix}`,
+      logGroupName: '/aws/apigateway/speak-greek-now-user-api',
       retention: logs.RetentionDays.ONE_WEEK,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
@@ -84,7 +79,7 @@ export class UserLoginServiceStack extends cdk.Stack {
 
     // Add resource tags to API Gateway
     cdk.Tags.of(api).add('Project', 'SpeakHellenic');
-    cdk.Tags.of(api).add('Environment', props.environment);
+    cdk.Tags.of(api).add('Environment', 'Production');
     cdk.Tags.of(api).add('Component', 'UserAuthentication');
 
     // API Key for authentication
@@ -148,22 +143,14 @@ export class UserLoginServiceStack extends cdk.Stack {
     "lastLoginAt": { "S": "$lastLoginAt" }
   },
   "ConditionExpression": "attribute_not_exists(userId)",
-  "ReturnValues": "ALL_NEW"
+  "ReturnValues": "NONE"
 }`,
         },
         integrationResponses: [
           {
             statusCode: '200',
             responseTemplates: {
-              'application/json': `#set($attrs = $input.path('$.Attributes'))
-{
-  "userId": "$attrs.userId.S",
-  "email": "$attrs.email.S",
-  "name": "$attrs.name.S",
-  "picture": "$attrs.picture.S",
-  "createdAt": "$attrs.createdAt.S",
-  "lastLoginAt": "$attrs.lastLoginAt.S"
-}`,
+              'application/json': `$context.request.body`,
             },
             responseParameters: {
               'method.response.header.Access-Control-Allow-Origin': "'*'",
@@ -256,15 +243,7 @@ export class UserLoginServiceStack extends cdk.Stack {
   "name": "$item.name.S",
   "picture": "$item.picture.S",
   "createdAt": "$item.createdAt.S",
-  "lastLoginAt": "$item.lastLoginAt.S"#if($item.completedLessons),
-  "completedLessons": [
-    #foreach($lesson in $item.completedLessons.L)
-    {
-      "id": "$lesson.M.id.S",
-      "at": "$lesson.M.at.S"
-    }#if($foreach.hasNext),#end
-    #end
-  ]#end
+  "lastLoginAt": "$item.lastLoginAt.S"
 }
 #else
 #set($context.responseOverride.status = 404)
@@ -297,61 +276,24 @@ export class UserLoginServiceStack extends cdk.Stack {
       ],
     });
 
-    // PUT /users/{userId} - Update user (lastLoginAt and completedLessons)
+    // PUT /users/{userId} - Update user last login
     const updateUserIntegration = new apigateway.AwsIntegration({
       service: 'dynamodb',
       action: 'UpdateItem',
       options: {
         credentialsRole: apiRole,
         requestTemplates: {
-          'application/json': `#set($inputRoot = $input.path('$'))
-#set($lastLogin = $inputRoot.lastLoginAt)
-#set($completedLessons = $inputRoot.completedLessons)
-
-## Build update expression and attribute values dynamically
-#set($updates = [])
-#set($attrValues = "{")
-#set($hasValues = false)
-
-## lastLoginAt
-#if($lastLogin && $lastLogin != "")
-  #set($void = $updates.add("lastLoginAt = :lastLoginAt"))
-  #if($hasValues)#set($attrValues = "$attrValues,")#end
-  #set($attrValues = "$attrValues"":lastLoginAt"": {""S"": ""$lastLogin""}")
-  #set($hasValues = true)
-#end
-
-## completedLessons (supports empty array)
-#if($completedLessons)
-  #set($void = $updates.add("completedLessons = :completedLessons"))
-  #if($hasValues)#set($attrValues = "$attrValues,")#end
-  #set($attrValues = "$attrValues"":completedLessons"": {""L"": [")
-  #set($first = true)
-  #foreach($lesson in $completedLessons)
-    #if(!$first)#set($attrValues = "$attrValues,")#end
-    #set($attrValues = "$attrValues{""M"": {""id"": {""S"": ""$lesson.id""}, ""at"": {""S"": ""$lesson.at""}}}")
-    #set($first = false)
-  #end
-  #set($attrValues = "$attrValues]}")
-  #set($hasValues = true)
-#end
-
-#set($attrValues = "$attrValues}")
-
-## Build final update expression
-#set($updateExpr = "SET ")
-#foreach($update in $updates)
-$update#if($foreach.hasNext), #end
-#end
-
+          'application/json': `#set($lastLogin = $input.path('$.lastLoginAt'))
 {
   "TableName": "${usersTable.tableName}",
   "Key": {
     "userId": { "S": "$util.urlDecode($input.params('userId'))" }
   },
-  "UpdateExpression": "$updateExpr",
+  "UpdateExpression": "SET lastLoginAt = :lastLoginAt",
   "ConditionExpression": "attribute_exists(userId)",
-  "ExpressionAttributeValues": $attrValues,
+  "ExpressionAttributeValues": {
+    ":lastLoginAt": { "S": "$lastLogin" }
+  },
   "ReturnValues": "ALL_NEW"
 }`,
         },
@@ -366,27 +308,8 @@ $update#if($foreach.hasNext), #end
   "name": "$attrs.name.S",
   "picture": "$attrs.picture.S",
   "createdAt": "$attrs.createdAt.S",
-  "lastLoginAt": "$attrs.lastLoginAt.S"#if($attrs.completedLessons),
-  "completedLessons": [
-    #foreach($lesson in $attrs.completedLessons.L)
-    {
-      "id": "$lesson.M.id.S",
-      "at": "$lesson.M.at.S"
-    }#if($foreach.hasNext),#end
-    #end
-  ]#end
+  "lastLoginAt": "$attrs.lastLoginAt.S"
 }`,
-            },
-            responseParameters: {
-              'method.response.header.Access-Control-Allow-Origin': "'*'",
-            },
-          },
-          {
-            statusCode: '400',
-            selectionPattern: '.*ValidationError.*',
-            responseTemplates: {
-              'application/json':
-                '{ "error": "ValidationError", "message": "Invalid request: check completedLessons structure or ensure at least one field is provided" }',
             },
             responseParameters: {
               'method.response.header.Access-Control-Allow-Origin': "'*'",
@@ -423,12 +346,6 @@ $update#if($foreach.hasNext), #end
       methodResponses: [
         {
           statusCode: '200',
-          responseParameters: {
-            'method.response.header.Access-Control-Allow-Origin': true,
-          },
-        },
-        {
-          statusCode: '400',
           responseParameters: {
             'method.response.header.Access-Control-Allow-Origin': true,
           },
