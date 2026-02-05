@@ -479,9 +479,7 @@ $update#if($foreach.hasNext), #end
     new cdk.CfnOutput(this, 'UserApiKeyId', {
       value: apiKey.keyId,
       description:
-        'User API Key ID - Get value: aws apigateway get-api-key --api-key ' +
-        apiKey.keyId +
-        ' --include-value --query value --output text',
+        'User API Key ID - Get value: aws apigateway get-api-key --api-key <KEY_ID> --include-value --query value --output text',
       exportName: `UserApiKeyId${props.envSuffix}`,
     });
 
