@@ -7,6 +7,9 @@ import { DomainError } from '../shared/errors';
 const logger = new Logger('UpdateUserHandler');
 const tableName = process.env.TABLE_NAME!;
 
+const repository = new DynamoDBUserRepository(tableName);
+const useCase = new UpdateUserUseCase(repository);
+
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   logger.info('Update user request received', {
     requestId: event.requestContext.requestId,
@@ -32,9 +35,6 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       lastLoginAt: body.lastLoginAt,
       completedLessons: body.completedLessons,
     };
-
-    const repository = new DynamoDBUserRepository(tableName);
-    const useCase = new UpdateUserUseCase(repository);
 
     const user = await useCase.execute(input);
 

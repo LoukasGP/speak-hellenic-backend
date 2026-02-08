@@ -63,7 +63,7 @@ export class UserLoginServiceStack extends cdk.Stack {
       },
       defaultCorsPreflightOptions: {
         allowOrigins:
-          props.environment === 'production'
+          props.environment === 'prod'
             ? ['https://speakhellenic.com', 'https://www.speakhellenic.com']
             : ['http://localhost:3000', 'https://development.d3v5vb4u9puz3w.amplifyapp.com'],
         allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

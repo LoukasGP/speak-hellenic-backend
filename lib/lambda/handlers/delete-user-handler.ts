@@ -7,6 +7,9 @@ import { DomainError } from '../shared/errors';
 const logger = new Logger('DeleteUserHandler');
 const tableName = process.env.TABLE_NAME!;
 
+const repository = new DynamoDBUserRepository(tableName);
+const useCase = new DeleteUserUseCase(repository);
+
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   logger.info('Delete user request received', {
     requestId: event.requestContext.requestId,
@@ -20,9 +23,6 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
 
     const userId = decodeURIComponent(encodedUserId);
-
-    const repository = new DynamoDBUserRepository(tableName);
-    const useCase = new DeleteUserUseCase(repository);
 
     await useCase.execute(userId);
 

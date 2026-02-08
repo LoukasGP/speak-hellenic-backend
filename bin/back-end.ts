@@ -4,28 +4,25 @@ import { S3StorageStack } from '../lib/s3-bucket-storage';
 import { UserLoginServiceStack } from '../lib/user-login-service';
 
 const app = new cdk.App();
-
-// Get environment from context (defaults to 'prod' to maintain existing production stack)
 const environment = app.node.tryGetContext('environment') || 'prod';
 
-// Environment-specific configuration
 const envConfig = {
   dev: {
-    stackSuffix: '-dev', // Dev gets a suffix to create new stacks
+    stackSuffix: '-dev',
     apiUsagePlanName: 'Development Usage Plan',
     apiUsagePlanDescription: 'Usage plan for development environment',
-    apiThrottleRate: 10, // 10 req/sec
-    apiThrottleBurst: 20,
-    apiQuotaLimit: 10000, // 10k requests/month for dev
+    apiThrottleRate: 2,
+    apiThrottleBurst: 2,
+    apiQuotaLimit: 10000,
     logRetentionDays: 2,
   },
   prod: {
-    stackSuffix: '', // Prod has no suffix (uses existing production stacks)
+    stackSuffix: '',
     apiUsagePlanName: 'Production Usage Plan',
     apiUsagePlanDescription: 'Usage plan for production environment',
-    apiThrottleRate: 10, // 10 req/sec (same as dev for MVP)
+    apiThrottleRate: 10,
     apiThrottleBurst: 20,
-    apiQuotaLimit: 50000, // 50k requests/month for production
+    apiQuotaLimit: 50000,
     logRetentionDays: 14,
   },
 };
@@ -38,7 +35,10 @@ if (!config) {
   );
 }
 
-// S3 Storage Stack for MP3 lesson files
+if (!process.env.CDK_DEFAULT_ACCOUNT || !process.env.CDK_DEFAULT_REGION) {
+  throw new Error('CDK_DEFAULT_ACCOUNT and CDK_DEFAULT_REGION must be set');
+}
+
 new S3StorageStack(app, `SpeakHellenic-S3StorageStack${config.stackSuffix}`, {
   environment,
   envSuffix: config.stackSuffix,
@@ -54,7 +54,6 @@ new S3StorageStack(app, `SpeakHellenic-S3StorageStack${config.stackSuffix}`, {
   },
 });
 
-// User Login Service Stack for authentication
 new UserLoginServiceStack(app, `SpeakHellenic-UserLoginServiceStack${config.stackSuffix}`, {
   environment,
   envSuffix: config.stackSuffix,
